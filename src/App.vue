@@ -1,90 +1,34 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import followersData from './assets/followers_1.json'
-import followingData from './assets/following.json'
+import { ref } from 'vue'
+import LandingPage from './components/LandingPage.vue'
+import DataAnalysis from './components/DataAnalysis.vue'
 
 // Reactive data
+const currentView = ref('landing') // 'landing' or 'analysis'
 const followers = ref([])
 const following = ref([])
-const isLoading = ref(true)
-const error = ref('')
 
-// Parse data function
-const parseUserData = (data, isFollowing = false) => {
-  if (isFollowing) {
-    // Following data has different structure
-    return data.relationships_following?.map(item => ({
-      username: item.string_list_data[0]?.value || '',
-      href: item.string_list_data[0]?.href || '',
-      timestamp: item.string_list_data[0]?.timestamp || 0,
-      date: new Date((item.string_list_data[0]?.timestamp || 0) * 1000)
-    })) || []
-  } else {
-    // Followers data structure
-    return data.map(item => ({
-      username: item.string_list_data[0]?.value || '',
-      href: item.string_list_data[0]?.href || '',
-      timestamp: item.string_list_data[0]?.timestamp || 0,
-      date: new Date((item.string_list_data[0]?.timestamp || 0) * 1000)
-    }))
-  }
+// Handle data ready from landing page
+const handleDataReady = (data) => {
+  followers.value = data.followersData
+  following.value = data.followingData
+  currentView.value = 'analysis'
 }
 
-// Computed properties for analysis
-const followersSet = computed(() => new Set(followers.value.map(f => f.username)))
-const followingSet = computed(() => new Set(following.value.map(f => f.username)))
-
-const mutualFollowers = computed(() => {
-  return followers.value.filter(follower => followingSet.value.has(follower.username))
-})
-
-const notFollowingBack = computed(() => {
-  return followers.value.filter(follower => !followingSet.value.has(follower.username))
-})
-
-const youDontFollowBack = computed(() => {
-  return following.value.filter(followed => !followersSet.value.has(followed.username))
-})
-
-const statistics = computed(() => ({
-  totalFollowers: followers.value.length,
-  totalFollowing: following.value.length,
-  mutualFollowersCount: mutualFollowers.value.length,
-  notFollowingBackCount: notFollowingBack.value.length,
-  youDontFollowBackCount: youDontFollowBack.value.length,
-  followBackRate: followers.value.length > 0 ? ((mutualFollowers.value.length / followers.value.length) * 100).toFixed(2) : 0
-}))
-
-// Load data on component mount
-onMounted(async () => {
-  try {
-    isLoading.value = true
-    
-    // Parse the imported JSON data
-    followers.value = parseUserData(followersData)
-    following.value = parseUserData(followingData, true)
-    
-    console.log('Followers loaded:', followers.value.length)
-    console.log('Following loaded:', following.value.length)
-    
-  } catch (err) {
-    error.value = `Error memuat data: ${err.message}`
-    console.error('Error:', err)
-  } finally {
-    isLoading.value = false
-  }
-})
-
-// Helper function to format date
-const formatDate = (date) => {
-  return date.toLocaleDateString('id-ID', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+// Handle back to upload
+const handleBackToUpload = () => {
+  currentView.value = 'landing'
+  followers.value = []
+  following.value = []
 }
+
+// Scroll to upload help section
+const scrollToHelp = () => {
+  const uploadHelpSection = document.getElementById('upload-help');
+  if (uploadHelpSection) {
+    uploadHelpSection.scrollIntoView({ behavior: 'smooth' });
+  }
+};
 </script>
 
 <template>
@@ -92,122 +36,35 @@ const formatDate = (date) => {
     <!-- Top Bar -->
     <div class="top-bar">
       <div class="top-bar-content">
-        <div class="logo">isFollowers</div>
+        <div class="logo"><span style="font-weight: 400;">is</span><span style="font-weight: 700;">Followers</span></div>
         <div class="top-bar-icons">
-          <a href="https://github.com" target="_blank" class="icon github-icon">
+          <a href="https://github.com/amdrydho26/isFollowers.git" target="_blank" class="icon github-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
             </svg>
           </a>
-          <a href="#" class="icon tutorial-icon" title="Tutorial">
+          <button @click="scrollToHelp" class="icon tutorial-icon" title="Tutorial">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
               <path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/>
             </svg>
-          </a>
+          </button>
         </div>
       </div>
     </div>
 
-    <div class="container">
-      <div v-if="isLoading">
-        <p class="loading">Memuat data...</p>
-      </div>
-      
-      <div v-else-if="error">
-        <p class="error">{{ error }}</p>
-      </div>
-      
-      <div v-else>
-        <!-- Statistics Section -->
-        <div class="stats-section">
-          <h2 class="section-title">Statistik</h2>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <h3>Total pengikut</h3>
-              <p class="stat-number">{{ statistics.totalFollowers }}</p>
-            </div>
-            <div class="stat-card">
-              <h3>Total Mengikuti</h3>
-              <p class="stat-number">{{ statistics.totalFollowing }}</p>
-            </div>
-            <div class="stat-card">
-              <h3>Saling Mengikuti</h3>
-              <p class="stat-number">{{ statistics.mutualFollowersCount }}</p>
-            </div>
-            <div class="stat-card">
-              <h3>Kamu Tidak Follbackk</h3>
-              <p class="stat-number">{{ statistics.notFollowingBackCount }}</p>
-            </div>
-            <div class="stat-card">
-              <h3>Tidak Follback Kamu</h3>
-              <p class="stat-number">{{ statistics.youDontFollowBackCount }}</p>
-            </div>
-            <div class="stat-card">
-              <h3>Tingkat Follow Back</h3>
-              <p class="stat-number">{{ statistics.followBackRate }}%</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mutual Followers Section -->
-        <div class="section">
-          <h2 class="section-title">Saling Mengikuti • <span class="count">{{ mutualFollowers.length }}</span></h2>
-          <p class="section-description">Orang yang mengikuti kamu dan kamu ikuti balik</p>
-          <div class="user-list">
-            <div v-for="user in mutualFollowers" :key="user.username" class="user-item">
-              <a :href="user.href" target="_blank" class="username">@{{ user.username }}</a>
-              <span class="timestamp">{{ formatDate(user.date) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Not Following Back Section -->
-        <div class="section">
-          <h2 class="section-title">Tidak Follow Kamu Balik • <span class="count">{{ youDontFollowBack.length }}</span></h2>
-          <p class="section-description">Orang yang kamu ikuti tapi mereka tidak mengikuti kamu balik</p>
-          <div class="user-list">
-            <div v-for="user in youDontFollowBack" :key="user.username" class="user-item">
-              <a :href="user.href" target="_blank" class="username">@{{ user.username }}</a>
-              <span class="timestamp">{{ formatDate(user.date) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- You Don't Follow Back Section -->
-        <div class="section">
-          <h2 class="section-title">Kamu Tidak Follow Balik • <span class="count">{{ notFollowingBack.length }}</span></h2>
-          <p class="section-description">Orang yang mengikuti kamu tapi kamu tidak mengikuti mereka balik</p>
-          <div class="user-list">
-            <div v-for="user in notFollowingBack" :key="user.username" class="user-item">
-              <a :href="user.href" target="_blank" class="username">@{{ user.username }}</a>
-              <span class="timestamp">{{ formatDate(user.date) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- All Followers Section -->
-        <div class="section">
-          <h2 class="section-title">Semua Pengikut • <span class="count">{{ followers.length }}</span></h2>
-          <div class="user-list">
-            <div v-for="user in followers" :key="user.username" class="user-item">
-              <a :href="user.href" target="_blank" class="username">@{{ user.username }}</a>
-              <span class="timestamp">{{ formatDate(user.date) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- All Following Section -->
-        <div class="section">
-          <h2 class="section-title">Semua yang Diikuti • <span class="count">{{ following.length }}</span></h2>
-          <div class="user-list">
-            <div v-for="user in following" :key="user.username" class="user-item">
-              <a :href="user.href" target="_blank" class="username">@{{ user.username }}</a>
-              <span class="timestamp">{{ formatDate(user.date) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Main Content -->
+    <main class="main-content">
+      <LandingPage 
+        v-if="currentView === 'landing'" 
+        @data-ready="handleDataReady" 
+      />
+      <DataAnalysis 
+        v-else-if="currentView === 'analysis'"
+        :followers="followers"
+        :following="following"
+        @back-to-upload="handleBackToUpload"
+      />
+    </main>
   </div>
 </template>
 
@@ -216,7 +73,7 @@ const formatDate = (date) => {
   background-color: var(--bg-primary);
   min-height: 100vh;
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Top Bar */
@@ -224,15 +81,19 @@ const formatDate = (date) => {
   background-color: var(--bg-secondary);
   border-radius: 16px;
   padding: 16px 0;
-  margin: 20px 20px 32px 20px;
+  margin: 20px auto 32px auto;
   box-shadow: 0 8px 32px #3457d512;
   backdrop-filter: blur(10px);
+  max-width: 1160px;
+  width: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 .top-bar-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 25px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -259,6 +120,9 @@ const formatDate = (date) => {
   transition: all 0.3s ease;
   text-decoration: none;
   color: var(--accent-blue);
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 .icon:hover {
@@ -273,12 +137,29 @@ const formatDate = (date) => {
   transform: scale(1.1);
 }
 
+.github-icon {
+  color: var(--accent-blue);
+}
+
 .github-icon:hover {
   color: #2a4bc4;
 }
 
+.tutorial-icon {
+  color: var(--accent-blue);
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+}
+
 .tutorial-icon:hover {
   color: #2a4bc4;
+  background: transparent !important;
+}
+
+.tutorial-icon:focus {
+  background: transparent !important;
+  outline: none !important;
 }
 
 /* Container */
@@ -286,6 +167,11 @@ const formatDate = (date) => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
 }
 
 /* Loading and Error */
@@ -440,8 +326,9 @@ const formatDate = (date) => {
 /* Responsive */
 @media (max-width: 768px) {
   .top-bar {
-    margin: 16px 16px 24px 16px;
+    margin: 16px auto 24px auto;
     padding: 12px 0;
+    max-width: calc(100% - 32px);
   }
   
   .top-bar-content {
@@ -477,8 +364,9 @@ const formatDate = (date) => {
 
 @media (max-width: 480px) {
   .top-bar {
-    margin: 12px 12px 20px 12px;
+    margin: 12px auto 20px auto;
     padding: 10px 0;
+    max-width: calc(100% - 24px);
   }
   
   .top-bar-content {
